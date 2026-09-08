@@ -67,6 +67,11 @@ Other:
 EOF
 }
 
+seller_operation_lock() {
+  exec 7>"$STATE_DIR/seller-operation.lock"
+  flock -n 7 || die "Another seller user operation is already running. Try again after it completes."
+}
+
 interactive_reality_bootstrap() {
   local server_name target port name
   printf '\nREALITY target selection is operator-controlled.\n'
@@ -86,6 +91,7 @@ interactive_seller_add() {
   local name days
   read -r -p 'Seller username: ' name
   read -r -p 'Validity days [30]: ' days
+  seller_operation_lock
   seller_add "$name" --days "${days:-30}" --protocol vless-reality
 }
 
@@ -176,6 +182,9 @@ case "${1:-}" in
     ;;
   user)
     action="${2:-}"
+    case "$action" in
+      add|suspend|resume|renew|delete|expire) seller_operation_lock ;;
+    esac
     case "$action" in
       add) shift 2; seller_add "$@" ;;
       list) seller_list ;;
