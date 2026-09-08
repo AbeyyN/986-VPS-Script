@@ -1,0 +1,9 @@
+# Default owner for project changes
+* @AbeyyN
+
+# Security-sensitive areas
+/install.sh @AbeyyN
+/uninstall.sh @AbeyyN
+/bin/ @AbeyyN
+/lib/ @AbeyyN
+/.github/workflows/ @AbeyyN
