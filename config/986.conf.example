@@ -5,7 +5,12 @@
 # Leave empty to attempt automatic public IPv4 detection.
 PUBLIC_ENDPOINT=""
 
-# WireGuard defaults
+# Xray release channel.
+# Early Access currently exposes only the 986-tested stable channel.
+# It is intentionally not equivalent to upstream latest/pre-release.
+XRAY_CHANNEL="stable"
+
+# Optional WireGuard defaults
 WG_PORT="51820"
 WG_SUBNET="10.86.0.0/24"
 WG_SERVER_ADDRESS="10.86.0.1/24"
@@ -15,8 +20,8 @@ WG_DNS="1.1.1.1,1.0.0.1"
 # Intentionally blank until the public API/domain is deployed.
 CONTROL_PLANE_URL=""
 
-# Future telemetry is opt-in/explicit. It is disabled in Early Access baseline.
+# Future telemetry is opt-in/explicit. It remains disabled in Early Access.
 TELEMETRY_ENABLED="false"
 
-# Current local licensing state. Enforcement is not active in 0.1.0-alpha.1.
+# Current local licensing state. Enforcement is not active in 0.2.0-alpha.1.
 LICENSE_MODE="early_access"
