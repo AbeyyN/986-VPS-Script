@@ -1,0 +1,45 @@
+986 VPS ENGINE EARLY ACCESS LICENSE
+Version 1.0 - 8 September 2026
+
+Copyright (c) 2026 AbeyyN. All rights reserved.
+
+1. EARLY ACCESS GRANT
+Subject to this License, the copyright holder grants you a limited, revocable, non-exclusive, non-transferable right to download, inspect, install and use the Software during the Early Access program, including use to administer servers and provide lawful VPN services to your own customers.
+
+2. SOURCE-AVAILABLE, NOT OPEN SOURCE
+The source code is publicly viewable for transparency, review and contribution. This License is not an OSI-approved open-source license and does not grant the unrestricted rights associated with MIT, Apache, BSD or GPL licenses.
+
+3. RESTRICTIONS
+You may not, without prior written permission from the copyright holder:
+
+(a) redistribute, resell, sublicense, mirror or republish the Software or a substantially similar derivative as your own VPN management product;
+(b) remove or misrepresent copyright, product identity or license notices;
+(c) bypass, defeat, disable or falsify licensing, entitlement, integrity or installation-registration controls when those controls are introduced;
+(d) use the Software to gain unauthorized access to systems, intercept communications without authorization, distribute malware, or operate unlawful services;
+(e) use trademarks or branding in a way that implies endorsement or ownership by you.
+
+4. MODIFICATIONS AND CONTRIBUTIONS
+You may make private modifications for testing and operational compatibility. Distribution of modified builds requires written permission. Contributions intentionally submitted to the upstream repository may be incorporated into the project under this License and future commercial versions, unless a separate written contributor agreement applies.
+
+5. EARLY ACCESS AND FUTURE COMMERCIAL LICENSING
+Early Access is currently provided without a subscription fee. Free Early Access is not a promise of perpetual free service. The copyright holder may introduce paid plans, feature entitlements, signed license leases, account limits or other commercial terms in future releases or connected services.
+
+Future versions or connected services may require an active entitlement. Where licensing enforcement is implemented, the product design should provide a reasonable connectivity grace period and should not intentionally destroy customer configuration or private keys solely because an entitlement expires.
+
+6. TELEMETRY AND PRIVACY
+Any project-operated telemetry must be documented. The project must not intentionally collect VPN traffic contents, customer browsing history, VPN customer passwords, customer VPN private keys, SSH private keys or /etc/shadow as product telemetry. Additional operational metadata may be processed only as described in the project's published privacy documentation.
+
+7. NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. YOU ARE RESPONSIBLE FOR BACKUPS, SERVER SECURITY, PROVIDER RULES, DATA PROTECTION OBLIGATIONS AND LAWFUL USE.
+
+8. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDER AND CONTRIBUTORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR BUSINESS-INTERRUPTION DAMAGES ARISING FROM USE OF THE SOFTWARE.
+
+9. TERMINATION
+Your rights under this License terminate if you materially violate its terms. On termination, you must stop using and distributing the affected Software except to the extent otherwise required by applicable law or a separate written agreement.
+
+10. THIRD-PARTY SOFTWARE
+Third-party components remain subject to their own licenses. This License does not override the licenses of WireGuard, OpenVPN, Linux distributions, packages or other dependencies.
+
+11. CONTACT
+For commercial licensing, redistribution permission, security coordination or other licensing questions, use the official GitHub repository communication channels until dedicated project contact channels are published.

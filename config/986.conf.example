@@ -1,0 +1,22 @@
+# 986 VPS Engine configuration
+# Installed as /etc/986-vps/986.conf
+
+# Public hostname or IPv4 used in generated client configs.
+# Leave empty to attempt automatic public IPv4 detection.
+PUBLIC_ENDPOINT=""
+
+# WireGuard defaults
+WG_PORT="51820"
+WG_SUBNET="10.86.0.0/24"
+WG_SERVER_ADDRESS="10.86.0.1/24"
+WG_DNS="1.1.1.1,1.0.0.1"
+
+# Future 986 control plane.
+# Intentionally blank until the public API/domain is deployed.
+CONTROL_PLANE_URL=""
+
+# Future telemetry is opt-in/explicit. It is disabled in Early Access baseline.
+TELEMETRY_ENABLED="false"
+
+# Current local licensing state. Enforcement is not active in 0.1.0-alpha.1.
+LICENSE_MODE="early_access"

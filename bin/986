@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+INSTALL_ROOT="/usr/local/lib/986-vps"
+
+for module in common system wireguard users licensing; do
+  file="$INSTALL_ROOT/$module.sh"
+  [[ -r "$file" ]] || { printf '986 VPS Engine: missing runtime module: %s\n' "$file" >&2; exit 1; }
+  # shellcheck disable=SC1090
+  source "$file"
+done
+
+usage() {
+  cat <<'EOF'
+986 VPS Engine
+
+Usage:
+  986                         Interactive menu
+  986 status                  Product/server summary
+  986 doctor                  Diagnostics
+  986 system                  Detailed system information
+  986 license                 Early Access/license status
+
+WireGuard:
+  986 wireguard install       Install and configure wg0
+  986 wireguard status        Show service and peer state
+  986 wireguard restart       Restart wg0 safely
+
+Users:
+  986 user add NAME [--days N]
+  986 user list
+  986 user suspend NAME
+  986 user resume NAME
+  986 user renew NAME [DAYS]
+  986 user delete NAME
+  986 user config NAME        Print the local client config
+
+Other:
+  986 version
+  986 help
+EOF
+}
+
+interactive_menu() {
+  while true; do
+    clear 2>/dev/null || true
+    printf '============================================================\n'
+    printf '  986 VPS Engine  %s\n' "$PRODUCT_VERSION"
+    printf '  Installation: %s\n' "$(installation_id)"
+    printf '============================================================\n'
+    printf '  1) Status\n'
+    printf '  2) System information\n'
+    printf '  3) Diagnostics\n'
+    printf '  4) Install WireGuard\n'
+    printf '  5) WireGuard status\n'
+    printf '  6) List users\n'
+    printf '  7) Add user\n'
+    printf '  8) Suspend user\n'
+    printf '  9) Resume user\n'
+    printf ' 10) Renew user\n'
+    printf ' 11) Delete user\n'
+    printf ' 12) License status\n'
+    printf '  0) Exit\n\n'
+    read -r -p 'Select: ' choice
+    case "$choice" in
+      1) status_summary ;;
+      2) system_summary ;;
+      3) doctor || true ;;
+      4) wireguard_install ;;
+      5) wireguard_status || true ;;
+      6) user_list ;;
+      7) read -r -p 'Username: ' u; read -r -p 'Validity days [30]: ' d; user_add "$u" --days "${d:-30}" ;;
+      8) read -r -p 'Username: ' u; user_suspend "$u" ;;
+      9) read -r -p 'Username: ' u; user_resume "$u" ;;
+      10) read -r -p 'Username: ' u; read -r -p 'Days [30]: ' d; user_renew "$u" "${d:-30}" ;;
+      11) read -r -p 'Username: ' u; read -r -p "Delete $u? Type YES: " confirm; [[ "$confirm" == 'YES' ]] && user_delete "$u" || warn 'Cancelled' ;;
+      12) license_status ;;
+      0) exit 0 ;;
+      *) warn 'Invalid selection' ;;
+    esac
+    printf '\n'
+    read -r -p 'Press Enter to continue...' _
+  done
+}
+
+ensure_state
+load_config
+
+case "${1:-}" in
+  '') interactive_menu ;;
+  status) status_summary ;;
+  doctor) doctor ;;
+  system) system_summary ;;
+  license) license_status ;;
+  version|--version|-v) printf '%s %s\n' "$PRODUCT_NAME" "$PRODUCT_VERSION" ;;
+  help|--help|-h) usage ;;
+  wireguard)
+    case "${2:-}" in
+      install) wireguard_install ;;
+      status) wireguard_status ;;
+      restart) wireguard_restart ;;
+      *) usage; exit 2 ;;
+    esac
+    ;;
+  user)
+    action="${2:-}"
+    shift 2 || true
+    case "$action" in
+      add) user_add "$@" ;;
+      list) user_list ;;
+      suspend) user_suspend "$@" ;;
+      resume) user_resume "$@" ;;
+      renew) user_renew "$@" ;;
+      delete) user_delete "$@" ;;
+      config) user_show_config "$@" ;;
+      *) usage; exit 2 ;;
+    esac
+    ;;
+  *) usage; exit 2 ;;
+esac

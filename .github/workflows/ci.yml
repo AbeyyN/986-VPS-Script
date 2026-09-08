@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bash-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Bash syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n install.sh
+          bash -n uninstall.sh
+          bash -n bin/986
+          find lib -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+      - name: ShellCheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          shellcheck install.sh uninstall.sh bin/986 lib/986/*.sh
+
+      - name: Repository safety checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f LICENSE
+          test -f SECURITY.md
+          test -f docs/PRIVACY.md
+          ! grep -RInE '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|password[[:space:]]*=[[:space:]]*[^"[:space:]]+)' --exclude-dir=.git .
