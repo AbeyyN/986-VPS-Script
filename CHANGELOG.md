@@ -22,17 +22,18 @@ The project follows semantic-versioning concepts, with `alpha`, `beta` and relea
 - Xray binary rollback baseline for failed upgrades.
 - Initial VLESS REALITY + XTLS Vision bootstrap.
 - Root-only generated VLESS REALITY client URI.
+- Initial local Mihomo/OpenClash YAML export for the REALITY bootstrap client.
 - Xray-specific status and doctor commands.
 - Future Trojan TLS and VMess WebSocket/TLS profile templates.
-- Xray engineering/safety documentation.
+- Xray and OpenClash compatibility documentation.
 
 ### Changed
 
 - WireGuard is now presented as an optional conventional VPN module rather than the product's primary protocol.
 - Live Xray runtime is separated from the removable 986 CLI/orchestration directory.
-- Installer now installs Xray/registry runtime modules and Xray dependencies while preserving existing config/state.
+- Installer now installs Xray, subscription and registry runtime modules while preserving existing config/state.
 - System diagnostics now understand the Xray primary engine.
-- README and roadmap now distinguish implemented Xray features from future protocol templates.
+- README and roadmap distinguish implemented Xray/OpenClash features from future protocol/hosted-subscription work.
 
 ### Fixed
 
@@ -45,7 +46,7 @@ The project follows semantic-versioning concepts, with `alpha`, `beta` and relea
 - Real Ubuntu Server 26.04 LTS VPS integration validation.
 - Unified Xray seller customer lifecycle.
 - Trojan/VMess/Shadowsocks lifecycle commands.
-- Mihomo/OpenClash subscription output.
+- Hosted/tokenized OpenClash subscription URL.
 - Hysteria2/TUIC/sing-box engine integration.
 - Automatic expiry/quota/device-limit enforcement.
 - Remote telemetry/control-plane registration/licensing enforcement.
