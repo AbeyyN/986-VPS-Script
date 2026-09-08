@@ -9,6 +9,8 @@ BACKUP_DIR="/var/backups/986-vps"
 XRAY_RUNTIME_DIR="/opt/986-vps/xray"
 XRAY_CONFIG_DIR="$CONFIG_DIR/xray"
 XRAY_UNIT="/etc/systemd/system/986-xray.service"
+EXPIRY_SERVICE="/etc/systemd/system/986-user-expiry.service"
+EXPIRY_TIMER="/etc/systemd/system/986-user-expiry.timer"
 PURGE="false"
 
 if [[ "${1:-}" == "--purge" ]]; then
@@ -16,6 +18,12 @@ if [[ "${1:-}" == "--purge" ]]; then
 fi
 
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
+
+# The expiry timer calls the 986 CLI. Disable it before removing the CLI so
+# uninstall never leaves a permanently failing systemd timer behind.
+systemctl disable --now 986-user-expiry.timer >/dev/null 2>&1 || true
+rm -f "$EXPIRY_SERVICE" "$EXPIRY_TIMER"
+systemctl daemon-reload >/dev/null 2>&1 || true
 
 printf '[986] Removing CLI/orchestration runtime only...\n'
 rm -f "$BIN_LINK"
@@ -49,6 +57,7 @@ if [[ -f "$XRAY_UNIT" ]]; then
   printf '[986] Xray systemd service definition preserved: %s.\n' "$XRAY_UNIT"
 fi
 
+printf '[986] Seller expiry automation removed with the management CLI.\n'
 printf '[986] Backups remain in %s.\n' "$BACKUP_DIR"
 printf '[986] Existing VPN/proxy services were not stopped or deleted.\n'
 printf '[986] Reinstalling 986 later will rediscover/preserve supported runtime state.\n'
