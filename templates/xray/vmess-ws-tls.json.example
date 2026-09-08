@@ -1,0 +1,52 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "vmess-ws-tls",
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "__CUSTOMER_UUID__",
+            "email": "__CUSTOMER_ID__"
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "__DOMAIN__",
+          "certificates": [
+            {
+              "certificateFile": "__CERTIFICATE_FILE__",
+              "keyFile": "__PRIVATE_KEY_FILE__"
+            }
+          ]
+        },
+        "wsSettings": {
+          "path": "__WEBSOCKET_PATH__"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole"
+    }
+  ]
+}
