@@ -39,7 +39,8 @@ esac
 export DEBIAN_FRONTEND=noninteractive
 log "Installing baseline dependencies..."
 apt-get update -y
-apt-get install -y --no-install-recommends ca-certificates curl jq iproute2 openssl coreutils gawk grep sed util-linux
+apt-get install -y --no-install-recommends \
+  ca-certificates curl jq unzip iproute2 openssl coreutils gawk grep sed util-linux passwd
 
 install -d -m 0755 "$INSTALL_ROOT" "$CONFIG_DIR" "$STATE_DIR" "$BACKUP_DIR"
 install -d -m 0700 "$CONFIG_DIR/clients" "$STATE_DIR/keys"
@@ -53,9 +54,11 @@ fetch() {
   rm -f "$tmp"
 }
 
-log "Installing 986 VPS Engine files..."
+log "Installing 986 VPS Engine runtime..."
 fetch "bin/986" "$INSTALL_ROOT/986" 0755
 fetch "lib/986/common.sh" "$INSTALL_ROOT/common.sh"
+fetch "lib/986/registry.sh" "$INSTALL_ROOT/registry.sh"
+fetch "lib/986/xray.sh" "$INSTALL_ROOT/xray.sh"
 fetch "lib/986/system.sh" "$INSTALL_ROOT/system.sh"
 fetch "lib/986/wireguard.sh" "$INSTALL_ROOT/wireguard.sh"
 fetch "lib/986/users.sh" "$INSTALL_ROOT/users.sh"
@@ -87,7 +90,9 @@ else
   log "Installation completed with diagnostic warnings. Run: sudo 986 doctor"
 fi
 
-printf '\nNext commands:\n'
+printf '\nRecommended next commands:\n'
 printf '  sudo 986\n'
+printf '  sudo 986 xray install\n'
+printf '  sudo 986 xray bootstrap reality --server-name HOST --target HOST:443\n'
+printf '\nOptional conventional VPN module:\n'
 printf '  sudo 986 wireguard install\n'
-printf '  sudo 986 user add alice --days 30\n'
