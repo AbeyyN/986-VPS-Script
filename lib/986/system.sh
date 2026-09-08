@@ -27,7 +27,7 @@ system_summary() {
 }
 
 doctor() {
-  local failures=0 warnings=0
+  local failures=0 warnings=0 seller_mismatch=0 username status uuid
   printf '%s diagnostics\n\n' "$PRODUCT_NAME"
 
   if [[ ${EUID:-$(id -u)} -eq 0 ]]; then ok 'Running with root privileges'; else warn 'Not running as root'; ((warnings+=1)); fi
@@ -48,7 +48,7 @@ doctor() {
     fail '/etc/os-release is unavailable'; ((failures+=1))
   fi
 
-  for cmd in curl ip awk sed grep openssl systemctl ss jq unzip sha256sum flock; do
+  for cmd in curl ip awk sed grep openssl systemctl systemd-analyze ss jq unzip sha256sum flock; do
     if command -v "$cmd" >/dev/null 2>&1; then
       ok "Dependency available: $cmd"
     else
@@ -78,6 +78,33 @@ doctor() {
     fi
   else
     warn 'Xray primary engine is not installed yet'
+    ((warnings+=1))
+  fi
+
+  seller_ensure_state
+  if [[ -s "$XRAY_CONFIG" ]]; then
+    while IFS=$'\t' read -r username status _ _ uuid _ _; do
+      [[ "$username" == username || -z "$username" ]] && continue
+      if [[ "$status" == active ]] && ! seller_xray_identity_present "$username" "$uuid"; then
+        fail "Active seller user missing from Xray config: $username"
+        ((seller_mismatch+=1))
+      fi
+      if [[ "$status" != active ]] && seller_xray_identity_present "$username" "$uuid"; then
+        fail "Inactive seller user still present in Xray config: $username ($status)"
+        ((seller_mismatch+=1))
+      fi
+    done < "$SELLER_DB"
+  fi
+  if (( seller_mismatch == 0 )); then
+    ok 'Seller registry and managed Xray identities are consistent'
+  else
+    ((failures+=seller_mismatch))
+  fi
+
+  if systemctl is-enabled --quiet "$SELLER_EXPIRY_TIMER" 2>/dev/null; then
+    ok "$SELLER_EXPIRY_TIMER enabled"
+  else
+    warn 'Seller automatic expiry timer is not enabled'
     ((warnings+=1))
   fi
 
@@ -121,6 +148,13 @@ status_summary() {
   printf 'Xray            : %s\n' "$xray_state"
   printf 'Xray version    : %s\n' "$xray_version"
   printf 'Xray channel    : %s\n' "${XRAY_CHANNEL:-stable}"
+  seller_summary
+
+  if systemctl is-enabled --quiet "$SELLER_EXPIRY_TIMER" 2>/dev/null; then
+    printf 'Expiry timer     : enabled\n'
+  else
+    printf 'Expiry timer     : disabled\n'
+  fi
 
   if systemctl is-active --quiet wg-quick@wg0 2>/dev/null; then
     printf 'WireGuard       : active (optional)\n'
