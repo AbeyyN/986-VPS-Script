@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 INSTALL_ROOT="/usr/local/lib/986-vps"
 
-for module in common system wireguard users licensing; do
+for module in common registry xray system wireguard users licensing; do
   file="$INSTALL_ROOT/$module.sh"
   [[ -r "$file" ]] || { printf '986 VPS Engine: missing runtime module: %s\n' "$file" >&2; exit 1; }
   # shellcheck disable=SC1090
@@ -19,26 +19,50 @@ Usage:
   986 status                  Product/server summary
   986 doctor                  Diagnostics
   986 system                  Detailed system information
+  986 registry                Show managed services and ports
   986 license                 Early Access/license status
 
-WireGuard:
+Xray (primary engine):
+  986 xray install [stable]
+  986 xray bootstrap reality --server-name HOST --target HOST:443 [--port N] [--name NAME]
+  986 xray status
+  986 xray doctor
+  986 xray restart
+  986 xray client [NAME]      Print generated VLESS REALITY URI
+
+WireGuard (optional):
   986 wireguard install       Install and configure wg0
   986 wireguard status        Show service and peer state
   986 wireguard restart       Restart wg0 safely
 
-Users:
+Legacy local WireGuard users:
   986 user add NAME [--days N]
   986 user list
   986 user suspend NAME
   986 user resume NAME
   986 user renew NAME [DAYS]
   986 user delete NAME
-  986 user config NAME        Print the local client config
+  986 user config NAME
 
 Other:
   986 version
   986 help
 EOF
+}
+
+interactive_reality_bootstrap() {
+  local server_name target port name
+  printf '\nREALITY target selection is operator-controlled.\n'
+  printf 'Use a TLS hostname/target you have evaluated for your deployment.\n\n'
+  read -r -p 'Server name (SNI): ' server_name
+  read -r -p 'Target (host:port): ' target
+  read -r -p 'Listen port [443]: ' port
+  read -r -p 'Bootstrap client name [bootstrap]: ' name
+  xray_bootstrap_reality reality \
+    --server-name "$server_name" \
+    --target "$target" \
+    --port "${port:-443}" \
+    --name "${name:-bootstrap}"
 }
 
 interactive_menu() {
@@ -51,38 +75,32 @@ interactive_menu() {
     printf '  1) Status\n'
     printf '  2) System information\n'
     printf '  3) Diagnostics\n'
-    printf '  4) Install WireGuard\n'
-    printf '  5) WireGuard status\n'
-    printf '  6) List users\n'
-    printf '  7) Add user\n'
-    printf '  8) Suspend user\n'
-    printf '  9) Resume user\n'
-    printf ' 10) Renew user\n'
-    printf ' 11) Delete user\n'
-    printf ' 12) License status\n'
+    printf '  4) Install / upgrade Xray stable\n'
+    printf '  5) Bootstrap VLESS REALITY + XTLS Vision\n'
+    printf '  6) Xray status\n'
+    printf '  7) Xray diagnostics\n'
+    printf '  8) Show bootstrap VLESS URI\n'
+    printf '  9) Service / port registry\n'
+    printf ' 10) Install WireGuard (optional)\n'
+    printf ' 11) WireGuard status\n'
+    printf ' 12) List legacy WireGuard users\n'
+    printf ' 13) License status\n'
     printf '  0) Exit\n\n'
     read -r -p 'Select: ' choice
     case "$choice" in
       1) status_summary ;;
       2) system_summary ;;
       3) doctor || true ;;
-      4) wireguard_install ;;
-      5) wireguard_status || true ;;
-      6) user_list ;;
-      7) read -r -p 'Username: ' u; read -r -p 'Validity days [30]: ' d; user_add "$u" --days "${d:-30}" ;;
-      8) read -r -p 'Username: ' u; user_suspend "$u" ;;
-      9) read -r -p 'Username: ' u; user_resume "$u" ;;
-      10) read -r -p 'Username: ' u; read -r -p 'Days [30]: ' d; user_renew "$u" "${d:-30}" ;;
-      11)
-        read -r -p 'Username: ' u
-        read -r -p "Delete $u? Type YES: " confirm
-        if [[ "$confirm" == 'YES' ]]; then
-          user_delete "$u"
-        else
-          warn 'Cancelled'
-        fi
-        ;;
-      12) license_status ;;
+      4) xray_install "$(config_value xray_channel stable)" ;;
+      5) interactive_reality_bootstrap ;;
+      6) xray_status ;;
+      7) xray_doctor || true ;;
+      8) xray_show_client ;;
+      9) registry_list ;;
+      10) wireguard_install ;;
+      11) wireguard_status || true ;;
+      12) user_list ;;
+      13) license_status ;;
       0) exit 0 ;;
       *) warn 'Invalid selection' ;;
     esac
@@ -92,6 +110,7 @@ interactive_menu() {
 }
 
 ensure_state
+registry_ensure_state
 load_config
 
 case "${1:-}" in
@@ -99,9 +118,25 @@ case "${1:-}" in
   status) status_summary ;;
   doctor) doctor ;;
   system) system_summary ;;
+  registry) registry_list ;;
   license) license_status ;;
   version|--version|-v) printf '%s %s\n' "$PRODUCT_NAME" "$PRODUCT_VERSION" ;;
   help|--help|-h) usage ;;
+  xray)
+    action="${2:-}"
+    case "$action" in
+      install) xray_install "${3:-${XRAY_CHANNEL:-stable}}" ;;
+      bootstrap)
+        shift 2
+        xray_bootstrap_reality "$@"
+        ;;
+      status) xray_status ;;
+      doctor) xray_doctor ;;
+      restart) xray_restart ;;
+      client) xray_show_client "${3:-}" ;;
+      *) usage; exit 2 ;;
+    esac
+    ;;
   wireguard)
     case "${2:-}" in
       install) wireguard_install ;;
