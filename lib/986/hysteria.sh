@@ -8,14 +8,15 @@ HYSTERIA_BIN="$HYSTERIA_CURRENT/hysteria"
 HYSTERIA_CONFIG_DIR="$CONFIG_DIR/hysteria"
 HYSTERIA_CONFIG="$HYSTERIA_CONFIG_DIR/config.yaml"
 HYSTERIA_PROFILE_FILE="$STATE_DIR/hysteria-profile.env"
+HYSTERIA_USERS_DB="$STATE_DIR/hysteria-users.tsv"
 HYSTERIA_SERVICE="986-hysteria.service"
 HYSTERIA_UNIT="/etc/systemd/system/$HYSTERIA_SERVICE"
 HYSTERIA_USER="986-hysteria"
-export HYSTERIA_STABLE_VERSION HYSTERIA_VENDOR_ROOT HYSTERIA_CURRENT HYSTERIA_BIN HYSTERIA_CONFIG_DIR HYSTERIA_CONFIG HYSTERIA_PROFILE_FILE HYSTERIA_SERVICE HYSTERIA_UNIT HYSTERIA_USER
+export HYSTERIA_STABLE_VERSION HYSTERIA_VENDOR_ROOT HYSTERIA_CURRENT HYSTERIA_BIN HYSTERIA_CONFIG_DIR HYSTERIA_CONFIG HYSTERIA_PROFILE_FILE HYSTERIA_USERS_DB HYSTERIA_SERVICE HYSTERIA_UNIT HYSTERIA_USER
 
 _hysteria_require_dependencies() {
   local cmd
-  for cmd in curl sha256sum systemctl systemd-analyze ss flock getent useradd install mktemp openssl awk grep; do
+  for cmd in curl sha256sum systemctl systemd-analyze ss flock getent useradd install mktemp openssl awk grep jq; do
     command -v "$cmd" >/dev/null 2>&1 || die "Hysteria2 dependency is missing: $cmd"
   done
 }
@@ -30,6 +31,26 @@ _hysteria_prepare_dirs() {
   _hysteria_ensure_user
   install -d -m 0755 "$HYSTERIA_VENDOR_ROOT"
   install -d -m 0750 -o root -g "$HYSTERIA_USER" "$HYSTERIA_CONFIG_DIR"
+}
+
+hysteria_users_ensure() {
+  install -d -m 0755 "$STATE_DIR"
+  if [[ ! -f "$HYSTERIA_USERS_DB" ]]; then
+    printf 'username\tpassword\n' > "$HYSTERIA_USERS_DB"
+    chmod 0600 "$HYSTERIA_USERS_DB"
+  fi
+}
+
+hysteria_user_exists() {
+  local username="$1"
+  hysteria_users_ensure
+  awk -F '\t' -v u="$username" 'NR>1 && $1==u {found=1} END {exit !found}' "$HYSTERIA_USERS_DB"
+}
+
+hysteria_user_password() {
+  local username="$1"
+  hysteria_users_ensure
+  awk -F '\t' -v u="$username" 'NR>1 && $1==u {print $2; exit}' "$HYSTERIA_USERS_DB"
 }
 
 _hysteria_release_metadata() {
@@ -88,6 +109,8 @@ TimeoutStopSec=20s
 KillSignal=SIGTERM
 UMask=0077
 NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 PrivateTmp=true
 PrivateDevices=true
 ProtectSystem=strict
@@ -140,6 +163,7 @@ hysteria_install() {
   _hysteria_require_dependencies
   registry_ensure_state
   _hysteria_prepare_dirs
+  hysteria_users_ensure
 
   exec 8>"$STATE_DIR/hysteria-install.lock"
   flock -n 8 || die "Another 986 Hysteria2 operation is already running."
@@ -206,13 +230,16 @@ _hysteria_validate_domain() {
 }
 
 _hysteria_copy_tls_material() {
-  local cert="$1" key="$2" cert_dest="$HYSTERIA_CONFIG_DIR/server.crt" key_dest="$HYSTERIA_CONFIG_DIR/server.key"
+  local cert="$1" key="$2" domain="$3"
+  local cert_dest="$HYSTERIA_CONFIG_DIR/server.crt" key_dest="$HYSTERIA_CONFIG_DIR/server.key"
+  local cert_pub key_pub
   [[ -r "$cert" ]] || die "TLS certificate is not readable: $cert"
   [[ -r "$key" ]] || die "TLS private key is not readable: $key"
   openssl x509 -in "$cert" -noout >/dev/null 2>&1 || die "TLS certificate is not a valid X.509 certificate."
   openssl pkey -in "$key" -noout >/dev/null 2>&1 || die "TLS private key is not valid/readable by OpenSSL."
+  openssl x509 -in "$cert" -checkhost "$domain" -noout >/dev/null 2>&1 \
+    || die "TLS certificate does not cover hostname: $domain"
 
-  local cert_pub key_pub
   cert_pub="$(openssl x509 -in "$cert" -pubkey -noout | openssl pkey -pubin -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
   key_pub="$(openssl pkey -in "$key" -pubout -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
   [[ -n "$cert_pub" && "$cert_pub" == "$key_pub" ]] || die "TLS certificate and private key do not match."
@@ -221,10 +248,23 @@ _hysteria_copy_tls_material() {
   install -m 0640 -o root -g "$HYSTERIA_USER" "$key" "$key_dest"
 }
 
-_hysteria_write_bootstrap_config() {
-  local staged="$1" port="$2" bootstrap_name="$3" bootstrap_password="$4"
+_hysteria_load_profile() {
+  [[ -r "$HYSTERIA_PROFILE_FILE" ]] || die "Hysteria2 profile metadata not found. Bootstrap Hysteria2 first."
+  # shellcheck disable=SC1090
+  source "$HYSTERIA_PROFILE_FILE"
+  local required
+  for required in HYSTERIA_DOMAIN HYSTERIA_PORT HYSTERIA_BOOTSTRAP_NAME HYSTERIA_BOOTSTRAP_PASSWORD; do
+    [[ -n "${!required:-}" ]] || die "Hysteria2 profile metadata is incomplete: $required"
+  done
+}
+
+_hysteria_render_config() {
+  local staged="$1" username password status protocols
+  _hysteria_load_profile
+  hysteria_users_ensure
+
   cat > "$staged" <<EOF_CONFIG
-listen: :$port
+listen: :$HYSTERIA_PORT
 
 tls:
   cert: $HYSTERIA_CONFIG_DIR/server.crt
@@ -234,7 +274,23 @@ tls:
 auth:
   type: userpass
   userpass:
-    $bootstrap_name: $bootstrap_password
+    $HYSTERIA_BOOTSTRAP_NAME: $HYSTERIA_BOOTSTRAP_PASSWORD
+EOF_CONFIG
+
+  while IFS=$'\t' read -r username password; do
+    [[ "$username" == username || -z "$username" ]] && continue
+    status=""
+    protocols=""
+    if [[ -r "${SELLER_DB:-}" ]]; then
+      status="$(awk -F '\t' -v u="$username" 'NR>1 && $1==u {print $2; exit}' "$SELLER_DB")"
+      protocols="$(awk -F '\t' -v u="$username" 'NR>1 && $1==u {print $4; exit}' "$SELLER_DB")"
+    fi
+    if [[ "$status" == active && ",$protocols," == *",hysteria2,"* ]]; then
+      printf '    %s: %s\n' "$username" "$password" >> "$staged"
+    fi
+  done < "$HYSTERIA_USERS_DB"
+
+  cat >> "$staged" <<'EOF_CONFIG'
 
 quic:
   maxIdleTimeout: 30s
@@ -285,10 +341,21 @@ _hysteria_apply_config_transaction() {
   registry_service_set hysteria2 hysteria "$HYSTERIA_SERVICE" active
 }
 
+hysteria_reconcile() {
+  require_root
+  _hysteria_load_profile
+  local staged
+  staged="$(mktemp "$HYSTERIA_CONFIG_DIR/.reconcile.XXXXXX.yaml")"
+  _hysteria_render_config "$staged"
+  _hysteria_apply_config_transaction "$staged" "$HYSTERIA_PORT"
+  rm -f "$staged"
+}
+
 hysteria_bootstrap() {
   require_root
   _hysteria_require_dependencies
   _hysteria_prepare_dirs
+  hysteria_users_ensure
   [[ -x "$HYSTERIA_BIN" ]] || die "Hysteria2 is not installed. Run: sudo 986 hysteria install"
 
   local domain="" cert="" key="" port="8443" name="bootstrap-hy2" password staged
@@ -311,14 +378,8 @@ hysteria_bootstrap() {
   validate_username "$name"
   registry_assert_port_available udp "$port" hysteria2
 
-  _hysteria_copy_tls_material "$cert" "$key"
-  password="$(openssl rand -base64 24 | tr -d '\n=/+' | cut -c1-28)"
-  [[ ${#password} -ge 20 ]] || die "Failed to generate Hysteria2 bootstrap password."
-
-  staged="$(mktemp "$HYSTERIA_CONFIG_DIR/.config.XXXXXX.yaml")"
-  _hysteria_write_bootstrap_config "$staged" "$port" "$name" "$password"
-  _hysteria_apply_config_transaction "$staged" "$port"
-  rm -f "$staged"
+  _hysteria_copy_tls_material "$cert" "$key" "$domain"
+  password="$(openssl rand -hex 18)"
 
   umask 077
   cat > "$HYSTERIA_PROFILE_FILE" <<EOF_PROFILE
@@ -329,6 +390,11 @@ HYSTERIA_BOOTSTRAP_PASSWORD='$password'
 EOF_PROFILE
   chmod 0600 "$HYSTERIA_PROFILE_FILE"
 
+  staged="$(mktemp "$HYSTERIA_CONFIG_DIR/.config.XXXXXX.yaml")"
+  _hysteria_render_config "$staged"
+  _hysteria_apply_config_transaction "$staged" "$port"
+  rm -f "$staged"
+
   ok "Hysteria2 bootstrap active on UDP $port"
   printf 'Domain    : %s\n' "$domain"
   printf 'User      : %s\n' "$name"
@@ -336,23 +402,51 @@ EOF_PROFILE
   printf '\nNext: sudo 986 hysteria client\n'
 }
 
+hysteria_credential_add() {
+  local username="$1" tmp password
+  validate_username "$username"
+  hysteria_users_ensure
+  hysteria_user_exists "$username" && die "Hysteria2 credential already exists for: $username"
+  password="$(openssl rand -hex 18)"
+  tmp="$(mktemp "$STATE_DIR/.hysteria-users.XXXXXX")"
+  cat "$HYSTERIA_USERS_DB" > "$tmp"
+  printf '%s\t%s\n' "$username" "$password" >> "$tmp"
+  chmod 0600 "$tmp"
+  mv -f "$tmp" "$HYSTERIA_USERS_DB"
+}
+
+hysteria_credential_remove() {
+  local username="$1" tmp
+  hysteria_users_ensure
+  tmp="$(mktemp "$STATE_DIR/.hysteria-users.XXXXXX")"
+  awk -F '\t' -v OFS='\t' -v u="$username" 'NR==1 || $1!=u' "$HYSTERIA_USERS_DB" > "$tmp"
+  chmod 0600 "$tmp"
+  mv -f "$tmp" "$HYSTERIA_USERS_DB"
+}
+
 hysteria_client_uri_value() {
-  [[ -r "$HYSTERIA_PROFILE_FILE" ]] || die "Hysteria2 profile metadata not found."
-  # shellcheck disable=SC1090
-  source "$HYSTERIA_PROFILE_FILE"
-  local auth name
-  auth="$(printf '%s:%s' "$HYSTERIA_BOOTSTRAP_NAME" "$HYSTERIA_BOOTSTRAP_PASSWORD" | jq -sRr @uri)"
-  name="$(printf '%s' "986-$HYSTERIA_BOOTSTRAP_NAME" | jq -sRr @uri)"
+  local username="${1:-}" password auth name
+  _hysteria_load_profile
+  if [[ -z "$username" || "$username" == "$HYSTERIA_BOOTSTRAP_NAME" ]]; then
+    username="$HYSTERIA_BOOTSTRAP_NAME"
+    password="$HYSTERIA_BOOTSTRAP_PASSWORD"
+  else
+    validate_username "$username"
+    password="$(hysteria_user_password "$username")"
+    [[ -n "$password" ]] || die "No Hysteria2 credential for seller user: $username"
+  fi
+  auth="$(printf '%s:%s' "$username" "$password" | jq -sRr @uri)"
+  name="$(printf '%s' "986-$username-hy2" | jq -sRr @uri)"
   printf 'hysteria2://%s@%s:%s/?sni=%s#%s\n' "$auth" "$HYSTERIA_DOMAIN" "$HYSTERIA_PORT" "$HYSTERIA_DOMAIN" "$name"
 }
 
 hysteria_show_client() {
   require_root
-  hysteria_client_uri_value
+  hysteria_client_uri_value "${1:-}"
 }
 
 hysteria_status() {
-  local version='not installed' state='not installed' port='-'
+  local version='not installed' state='not installed' port='-' linked=0
   [[ -x "$HYSTERIA_BIN" ]] && version="$(_hysteria_version_text)"
   if [[ -r "$HYSTERIA_PROFILE_FILE" ]]; then
     # shellcheck disable=SC1090
@@ -364,9 +458,12 @@ hysteria_status() {
   elif [[ -s "$HYSTERIA_CONFIG" ]]; then
     state='configured / inactive'
   fi
+  hysteria_users_ensure
+  linked="$(awk 'NR>1 {n++} END {print n+0}' "$HYSTERIA_USERS_DB")"
   printf 'Hysteria2 version : %s\n' "$version"
   printf 'Service           : %s\n' "$state"
   printf 'Listen            : %s\n' "$port"
+  printf 'Linked sellers    : %s\n' "$linked"
   printf 'Config            : %s\n' "$HYSTERIA_CONFIG"
 }
 
