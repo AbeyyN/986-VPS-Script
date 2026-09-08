@@ -2,7 +2,7 @@
 
 XRAY_STABLE_VERSION="v26.3.27"
 XRAY_STABLE_SHA256_AMD64="23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae"
-XRAY_VENDOR_ROOT="$INSTALL_ROOT/vendor/xray"
+XRAY_VENDOR_ROOT="/opt/986-vps/xray"
 XRAY_CURRENT="$XRAY_VENDOR_ROOT/current"
 XRAY_BIN="$XRAY_CURRENT/xray"
 XRAY_CONFIG_DIR="$CONFIG_DIR/xray"
@@ -16,7 +16,7 @@ export XRAY_STABLE_VERSION XRAY_VENDOR_ROOT XRAY_CURRENT XRAY_BIN XRAY_CONFIG_DI
 
 _xray_require_dependencies() {
   local cmd
-  for cmd in curl unzip sha256sum jq openssl systemctl ss flock getent useradd install mktemp; do
+  for cmd in curl unzip sha256sum jq openssl systemctl systemd-analyze ss flock getent useradd install mktemp; do
     command -v "$cmd" >/dev/null 2>&1 || die "Xray dependency is missing: $cmd"
   done
 }
@@ -29,7 +29,7 @@ _xray_ensure_user() {
 
 _xray_prepare_dirs() {
   _xray_ensure_user
-  install -d -m 0755 "$XRAY_VENDOR_ROOT"
+  install -d -m 0755 /opt/986-vps "$XRAY_VENDOR_ROOT"
   install -d -m 0750 -o root -g "$XRAY_USER" "$XRAY_CONFIG_DIR"
   install -d -m 0700 "$XRAY_KEY_DIR"
 }
@@ -67,7 +67,7 @@ _xray_validate_config() {
 
 _xray_write_unit() {
   local tmp
-  tmp="$(mktemp /etc/systemd/system/.986-xray.XXXXXX)"
+  tmp="$(mktemp /etc/systemd/system/.986-xray.XXXXXX.service)"
   cat > "$tmp" <<EOF_UNIT
 [Unit]
 Description=986 VPS Engine - Xray Core
@@ -286,8 +286,12 @@ _xray_apply_config_transaction() {
 }
 
 xray_bootstrap_reality() {
+  local mode="${1:-}"
   local server_name="" target="" port="443" client_name="bootstrap"
   local uuid key_output private_key public_key short_id endpoint staged client_file encoded_name uri
+
+  [[ "$mode" == 'reality' ]] || die "Bootstrap mode must be: reality"
+  shift
 
   require_root
   _xray_require_dependencies
@@ -295,7 +299,6 @@ xray_bootstrap_reality() {
   _xray_prepare_dirs
   [[ -x "$XRAY_BIN" ]] || die "Xray is not installed. Run: sudo 986 xray install"
 
-  shift || true
   while (($#)); do
     case "$1" in
       --server-name) [[ $# -ge 2 ]] || die "--server-name requires a value"; server_name="$2"; shift 2 ;;
