@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible problem in 986 VPS Engine
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, private keys, real customer credentials, or other secrets.
+  - type: input
+    id: version
+    attributes:
+      label: 986 VPS Engine version
+      placeholder: 0.1.0-alpha.1
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Debian 13
+        - Ubuntu Server 26.04 LTS
+        - Other / unvalidated
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest safe set of steps that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Paste relevant output from `sudo 986 doctor` after removing sensitive data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, private keys, customer data and other secrets.
+          required: true
+        - label: I searched existing issues for the same problem.
+          required: true
