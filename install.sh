@@ -25,9 +25,7 @@ case "${ID:-}" in
     major="${VERSION_ID%%.*}"
     (( major >= 26 )) || die "Ubuntu Server 26.04 LTS or newer is required for Early Access."
     ;;
-  *)
-    die "Unsupported distribution: ${ID:-unknown}. Supported: Debian 13+, Ubuntu 26.04+."
-    ;;
+  *) die "Unsupported distribution: ${ID:-unknown}. Supported: Debian 13+, Ubuntu 26.04+." ;;
 esac
 
 arch="$(dpkg --print-architecture 2>/dev/null || uname -m)"
@@ -46,8 +44,7 @@ install -d -m 0755 "$INSTALL_ROOT" "$CONFIG_DIR" "$STATE_DIR" "$BACKUP_DIR"
 install -d -m 0700 "$CONFIG_DIR/clients" "$STATE_DIR/keys"
 
 fetch() {
-  local remote="$1" dest="$2" mode="${3:-0644}"
-  local tmp
+  local remote="$1" dest="$2" mode="${3:-0644}" tmp
   tmp="$(mktemp)"
   curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$REPO_RAW/$remote" -o "$tmp"
   install -m "$mode" "$tmp" "$dest"
@@ -59,7 +56,9 @@ fetch "bin/986" "$INSTALL_ROOT/986" 0755
 fetch "lib/986/common.sh" "$INSTALL_ROOT/common.sh"
 fetch "lib/986/registry.sh" "$INSTALL_ROOT/registry.sh"
 fetch "lib/986/xray.sh" "$INSTALL_ROOT/xray.sh"
+fetch "lib/986/hysteria.sh" "$INSTALL_ROOT/hysteria.sh"
 fetch "lib/986/seller.sh" "$INSTALL_ROOT/seller.sh"
+fetch "lib/986/seller_multi.sh" "$INSTALL_ROOT/seller_multi.sh"
 fetch "lib/986/subscription.sh" "$INSTALL_ROOT/subscription.sh"
 fetch "lib/986/system.sh" "$INSTALL_ROOT/system.sh"
 fetch "lib/986/wireguard.sh" "$INSTALL_ROOT/wireguard.sh"
@@ -84,10 +83,13 @@ if [[ ! -f "$STATE_DIR/users.tsv" ]]; then
   printf 'username\tstatus\texpires_at\tip_address\tpublic_key\tconfig_path\n' > "$STATE_DIR/users.tsv"
   chmod 0600 "$STATE_DIR/users.tsv"
 fi
-
 if [[ ! -f "$STATE_DIR/sellers.tsv" ]]; then
   printf 'username\tstatus\texpires_at\tprotocols\txray_uuid\tcreated_at\tupdated_at\n' > "$STATE_DIR/sellers.tsv"
   chmod 0600 "$STATE_DIR/sellers.tsv"
+fi
+if [[ ! -f "$STATE_DIR/hysteria-users.tsv" ]]; then
+  printf 'username\tpassword\n' > "$STATE_DIR/hysteria-users.tsv"
+  chmod 0600 "$STATE_DIR/hysteria-users.tsv"
 fi
 
 log "Installing seller expiry enforcement timer..."
@@ -104,12 +106,14 @@ else
   log "Installation completed with diagnostic warnings. Run: sudo 986 doctor"
 fi
 
-printf '\nRecommended next commands:\n'
-printf '  sudo 986\n'
+printf '\nRecommended start:\n'
 printf '  sudo 986 xray install\n'
 printf '  sudo 986 xray bootstrap reality --server-name HOST --target HOST:443\n'
 printf '  sudo 986 user add alice --days 30 --protocol vless-reality\n'
+printf '\nAdd Hysteria2 after valid TLS material exists:\n'
+printf '  sudo 986 hysteria install\n'
+printf '  sudo 986 hysteria bootstrap --domain vpn.example.com --cert /path/fullchain.pem --key /path/privkey.pem\n'
+printf '  sudo 986 user protocol add alice hysteria2\n'
 printf '  sudo 986 subscription mihomo alice\n'
-printf '\nOptional conventional VPN module:\n'
+printf '\nOptional conventional VPN:\n'
 printf '  sudo 986 wireguard install\n'
-printf '  sudo 986 wireguard user add legacy-wg --days 30\n'
