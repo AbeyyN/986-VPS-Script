@@ -16,8 +16,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ShellCheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Install lint dependencies
+        run: sudo apt-get update && sudo apt-get install -y shellcheck jq file
 
       - name: Bash syntax
         shell: bash
@@ -34,6 +34,14 @@ jobs:
           set -euo pipefail
           shellcheck install.sh uninstall.sh bin/986 lib/986/*.sh
 
+      - name: Xray template validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          find templates/xray -type f -name '*.json.example' -print0 | xargs -0 -n1 jq empty
+          grep -Fq 'XRAY_STABLE_VERSION="v26.3.27"' lib/986/xray.sh
+          grep -Fq '23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae' lib/986/xray.sh
+
       - name: Repository safety checks
         shell: bash
         run: |
@@ -41,4 +49,13 @@ jobs:
           test -f LICENSE
           test -f SECURITY.md
           test -f docs/PRIVACY.md
+          test -f docs/XRAY.md
           ! grep -RInE '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|password[[:space:]]*=[[:space:]]*[^"[:space:]]+)' --exclude-dir=.git .
+          if find . -type f -not -path './.git/*' -exec file {} + | grep -q ': ELF '; then
+            echo 'Opaque ELF binaries must not be committed to the repository.' >&2
+            exit 1
+          fi
+          if find . -type f -not -path './.git/*' \( -name '*.zip' -o -name '*.tar' -o -name '*.tgz' -o -name '*.tar.gz' \) -print -quit | grep -q .; then
+            echo 'Vendored binary/archive payloads are not permitted in source control.' >&2
+            exit 1
+          fi
