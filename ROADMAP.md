@@ -14,29 +14,34 @@ Status: **in progress**
 - [x] Privacy/security documentation
 - [x] CI syntax/ShellCheck baseline
 - [x] Clean-room reference audit policy
+- [x] Per-module Xray installation lock
+- [x] Canonical service/port registry and conflict detection baseline
+- [x] Xray component provenance/checksum record baseline
 - [ ] Production VPS integration test matrix
-- [ ] Shared module lifecycle framework
-- [ ] Installer transaction/rollback engine
-- [ ] Per-module installation lock
-- [ ] Component provenance/checksum inventory
+- [ ] Shared module lifecycle framework across all engines
+- [ ] General installer transaction/rollback engine
 - [ ] Structured logging
-- [ ] Canonical service/port registry and conflict detection
 
 ## Phase 1 - Xray-first seller core
 
 Priority: **P0**
 
-- [ ] Official Xray-core acquisition with version pinning and checksum/signature verification
-- [ ] Hardened `986-xray.service`
-- [ ] Xray config staging, syntax validation, atomic apply and rollback
-- [ ] VLESS + REALITY profile
-- [ ] VLESS + XTLS Vision / current supported Xray transport profile
-- [ ] Trojan profile
-- [ ] VMess compatibility profile
-- [ ] Shadowsocks compatibility profile
-- [ ] Xray health/doctor/repair workflow
-- [ ] Xray safe upgrade/rollback
-- [ ] Common user identity across Xray protocols
+- [x] Official Xray-core acquisition with stable-channel version pinning and SHA-256 verification
+- [x] Hardened `986-xray.service` baseline
+- [x] Xray config staging, upstream syntax validation, transactional apply and rollback
+- [x] VLESS + REALITY bootstrap profile
+- [x] VLESS + XTLS Vision flow in the REALITY bootstrap
+- [x] Xray-specific status/doctor workflow
+- [x] Xray binary upgrade rollback baseline
+- [x] Generated VLESS REALITY client URI baseline
+- [x] Future Trojan TLS profile template
+- [x] Future VMess WebSocket/TLS compatibility template
+- [ ] Trojan seller lifecycle commands
+- [ ] VMess seller lifecycle commands
+- [ ] Shadowsocks compatibility profile/lifecycle
+- [ ] Xray repair command beyond restart/rollback
+- [ ] Multiple managed Xray inbounds without replacing the bootstrap profile
+- [ ] Common customer identity across Xray protocols
 - [ ] Production integration tests on Debian 13 amd64
 - [ ] Production integration tests on Ubuntu Server 26.04 LTS amd64
 
@@ -45,7 +50,8 @@ Priority: **P0**
 Priority: **P0/P1**
 
 - [ ] Unified subscription engine
-- [ ] VLESS URI generation
+- [x] Initial VLESS URI generation for the bootstrap REALITY client
+- [ ] Unified per-customer VLESS URI generation
 - [ ] VMess URI generation where enabled
 - [ ] Trojan URI generation
 - [ ] Shadowsocks URI generation
@@ -82,7 +88,7 @@ Priority: **P1**
 
 These modules must remain isolated from the modern Xray seller core.
 
-- [ ] WireGuard retained as optional conventional VPN module
+- [x] WireGuard retained as optional conventional VPN module
 - [ ] OpenVPN optional conventional VPN module
 - [ ] Transport Relay for SSH/HTTP-custom style compatibility
 - [ ] SlowDNS/DNS Tunnel fallback module
@@ -95,9 +101,11 @@ No opaque executable copied from another script repository is permitted.
 
 - [ ] Encrypted backup/restore
 - [ ] Server-to-server migration
-- [ ] Update channels: stable/beta/experimental
+- [x] Xray stable channel baseline
+- [ ] Beta/experimental channels
 - [ ] Signed release verification
-- [ ] Safe updater with rollback
+- [x] Xray runtime/config rollback baseline
+- [ ] General safe updater with rollback across 986 components
 - [ ] Firewall abstraction
 - [ ] Certificate lifecycle/validation
 - [ ] Service restart-rate monitoring
@@ -159,9 +167,11 @@ rollback
 remove
 ```
 
-Install/update operations should use locking, permission checks, staged configuration, syntax validation, atomic application, health verification and automatic restoration of the previous known-good state on failure.
+Install/update operations should use locking, permission checks, upstream provenance verification, service/port conflict detection, staged configuration, syntax validation, atomic application, health verification and automatic restoration of the previous known-good state on failure.
 
-See `docs/REFERENCE-AUDIT-LACASITA.md`.
+Live protocol runtimes must also remain separated from removable CLI/orchestration files so uninstalling a management layer cannot unexpectedly break existing customer services.
+
+See `docs/REFERENCE-AUDIT-LACASITA.md` and `docs/XRAY.md`.
 
 ## Release principle
 
