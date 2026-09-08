@@ -48,9 +48,8 @@ _xray_release_metadata() {
 }
 
 _xray_version_text() {
-  local bin="${1:-$XRAY_BIN}"
-  [[ -x "$bin" ]] || return 1
-  "$bin" version 2>/dev/null | head -n 1
+  [[ -x "$XRAY_BIN" ]] || return 1
+  "$XRAY_BIN" version 2>/dev/null | head -n 1
 }
 
 _xray_validate_config_with() {
