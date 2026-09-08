@@ -48,7 +48,7 @@ doctor() {
     fail '/etc/os-release is unavailable'; ((failures+=1))
   fi
 
-  for cmd in curl ip awk sed grep openssl systemctl; do
+  for cmd in curl ip awk sed grep openssl systemctl ss jq unzip sha256sum flock; do
     if command -v "$cmd" >/dev/null 2>&1; then
       ok "Dependency available: $cmd"
     else
@@ -57,10 +57,34 @@ doctor() {
     fi
   done
 
+  if [[ -x "$XRAY_BIN" ]]; then
+    ok "Xray runtime detected: $(_xray_version_text)"
+    if [[ -s "$XRAY_CONFIG" ]]; then
+      if _xray_validate_config; then
+        ok 'Xray configuration passes runtime validation'
+      else
+        fail 'Xray configuration failed runtime validation'
+        ((failures+=1))
+      fi
+      if systemctl is-active --quiet "$XRAY_SERVICE" 2>/dev/null; then
+        ok "$XRAY_SERVICE active"
+      else
+        warn 'Xray is configured but service is not active'
+        ((warnings+=1))
+      fi
+    else
+      warn 'Xray runtime installed but no profile configured yet'
+      ((warnings+=1))
+    fi
+  else
+    warn 'Xray primary engine is not installed yet'
+    ((warnings+=1))
+  fi
+
   if sysctl -n net.ipv4.ip_forward 2>/dev/null | grep -qx '1'; then
     ok 'IPv4 forwarding enabled'
   else
-    warn 'IPv4 forwarding is disabled (WireGuard installer will enable it)'
+    warn 'IPv4 forwarding is disabled; optional routed VPN modules may enable it when required'
     ((warnings+=1))
   fi
 
@@ -68,7 +92,7 @@ doctor() {
     if command -v wg >/dev/null 2>&1; then ok 'WireGuard configuration detected'; else fail 'WireGuard config exists but wg command is missing'; ((failures+=1)); fi
     if systemctl is-active --quiet wg-quick@wg0 2>/dev/null; then ok 'wg0 service active'; else warn 'wg0 configuration exists but service is not active'; ((warnings+=1)); fi
   else
-    warn 'WireGuard is not configured yet'; ((warnings+=1))
+    info 'WireGuard optional module is not configured'
   fi
 
   printf '\nResult: %d failure(s), %d warning(s)\n' "$failures" "$warnings"
@@ -76,20 +100,36 @@ doctor() {
 }
 
 status_summary() {
+  local xray_state='not installed' xray_version='-'
   load_config
   printf '%s %s\n' "$PRODUCT_NAME" "$PRODUCT_VERSION"
   printf 'Installation ID : %s\n' "$(installation_id)"
   printf 'License mode    : %s\n' "${LICENSE_MODE:-early_access}"
   printf 'Telemetry       : %s\n' "${TELEMETRY_ENABLED:-false}"
   printf 'Control plane   : %s\n' "${CONTROL_PLANE_URL:-not configured}"
+
+  if [[ -x "$XRAY_BIN" ]]; then
+    xray_version="$(_xray_version_text)"
+    if systemctl is-active --quiet "$XRAY_SERVICE" 2>/dev/null; then
+      xray_state='active'
+    elif [[ -s "$XRAY_CONFIG" ]]; then
+      xray_state='configured / inactive'
+    else
+      xray_state='runtime installed / unconfigured'
+    fi
+  fi
+  printf 'Xray            : %s\n' "$xray_state"
+  printf 'Xray version    : %s\n' "$xray_version"
+  printf 'Xray channel    : %s\n' "${XRAY_CHANNEL:-stable}"
+
   if systemctl is-active --quiet wg-quick@wg0 2>/dev/null; then
-    printf 'WireGuard       : active\n'
+    printf 'WireGuard       : active (optional)\n'
   elif [[ -f "$WG_CONF" ]]; then
-    printf 'WireGuard       : configured / inactive\n'
+    printf 'WireGuard       : configured / inactive (optional)\n'
   else
-    printf 'WireGuard       : not installed\n'
+    printf 'WireGuard       : not installed (optional)\n'
   fi
   if [[ -f "$USERS_DB" ]]; then
-    printf 'Local users     : %s\n' "$(awk 'NR>1 {n++} END {print n+0}' "$USERS_DB")"
+    printf 'Legacy WG users : %s\n' "$(awk 'NR>1 {n++} END {print n+0}' "$USERS_DB")"
   fi
 }
