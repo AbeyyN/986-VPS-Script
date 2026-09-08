@@ -17,6 +17,7 @@ Status: **in progress**
 - [x] Per-module Xray installation lock
 - [x] Canonical service/port registry and conflict detection baseline
 - [x] Xray component provenance/checksum record baseline
+- [x] Seller-operation lock for timer/manual mutation serialization
 - [ ] Production VPS integration test matrix
 - [ ] Shared module lifecycle framework across all engines
 - [ ] General installer transaction/rollback engine
@@ -34,6 +35,9 @@ Priority: **P0**
 - [x] Xray-specific status/doctor workflow
 - [x] Xray binary upgrade rollback baseline
 - [x] Generated VLESS REALITY client URI baseline
+- [x] Multiple managed VLESS REALITY seller users on one Xray inbound
+- [x] Persistent per-customer Xray UUID
+- [x] Seller suspend/resume/delete mapped transactionally into Xray client identities
 - [x] Future Trojan TLS profile template
 - [x] Future VMess WebSocket/TLS compatibility template
 - [ ] Trojan seller lifecycle commands
@@ -41,7 +45,7 @@ Priority: **P0**
 - [ ] Shadowsocks compatibility profile/lifecycle
 - [ ] Xray repair command beyond restart/rollback
 - [ ] Multiple managed Xray inbounds without replacing the bootstrap profile
-- [ ] Common customer identity across Xray protocols
+- [ ] One customer identity with multiple simultaneous Xray protocols
 - [ ] Production integration tests on Debian 13 amd64
 - [ ] Production integration tests on Ubuntu Server 26.04 LTS amd64
 
@@ -49,11 +53,11 @@ Priority: **P0**
 
 Priority: **P0/P1**
 
-- [ ] Unified subscription engine across multiple customers/protocols
-- [x] Initial VLESS URI generation for the bootstrap REALITY client
-- [x] Initial local Mihomo/OpenClash YAML export for the bootstrap REALITY client
+- [x] Per-customer VLESS REALITY URI generation
+- [x] Per-customer Mihomo/OpenClash YAML generation
+- [x] Bootstrap-client compatibility retained
 - [ ] Hosted tokenized HTTPS subscription endpoint
-- [ ] Unified per-customer VLESS URI generation
+- [ ] Multi-protocol subscription aggregation for one customer
 - [ ] VMess URI generation where enabled
 - [ ] Trojan URI generation
 - [ ] Shadowsocks URI generation
@@ -77,13 +81,18 @@ Priority: **P1**
 
 ## Phase 4 - Seller account engine
 
-- [ ] Automatic expiry enforcement with systemd timer
+- [x] Unified seller registry separate from protocol-specific legacy state
+- [x] Seller add/list/show/suspend/resume/renew/delete lifecycle
+- [x] Automatic expiry enforcement with systemd timer
+- [x] Batch expiry mutation against managed Xray identities
+- [x] Seller/Xray consistency checks in diagnostics
+- [x] Seller account summary in status output
 - [ ] Traffic/quota accounting
 - [ ] Concurrent/device-limit policy where technically reliable
-- [ ] Unified suspend/resume across assigned protocols
+- [ ] Unified suspend/resume across multiple assigned protocols
 - [ ] Bulk account create/renew/suspend/delete
 - [ ] Online/session visibility where technically reliable
-- [ ] Expiring-account reporting
+- [ ] Expiring-account reporting/notifications
 - [ ] Reseller-ready ownership fields
 
 ## Phase 5 - Optional compatibility modules
@@ -91,6 +100,7 @@ Priority: **P1**
 These modules must remain isolated from the modern Xray seller core.
 
 - [x] WireGuard retained as optional conventional VPN module
+- [x] Legacy WireGuard user lifecycle moved under `986 wireguard user ...`
 - [ ] OpenVPN optional conventional VPN module
 - [ ] Transport Relay for SSH/HTTP-custom style compatibility
 - [ ] SlowDNS/DNS Tunnel fallback module
@@ -173,7 +183,7 @@ Install/update operations should use locking, permission checks, upstream proven
 
 Live protocol runtimes must also remain separated from removable CLI/orchestration files so uninstalling a management layer cannot unexpectedly break existing customer services.
 
-See `docs/REFERENCE-AUDIT-LACASITA.md`, `docs/XRAY.md` and `docs/OPENCLASH.md`.
+See `docs/REFERENCE-AUDIT-LACASITA.md`, `docs/XRAY.md`, `docs/OPENCLASH.md` and `docs/SELLER-ENGINE.md`.
 
 ## Release principle
 
