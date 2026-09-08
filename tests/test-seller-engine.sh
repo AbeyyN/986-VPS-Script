@@ -9,9 +9,6 @@ STATE_DIR="$TMP/state"
 CONFIG_DIR="$TMP/etc"
 XRAY_CONFIG_DIR="$CONFIG_DIR/xray"
 XRAY_CONFIG="$XRAY_CONFIG_DIR/config.json"
-XRAY_BIN="$TMP/xray"
-XRAY_PROFILE_FILE="$STATE_DIR/xray-profile.env"
-CONFIG_FILE="$CONFIG_DIR/986.conf"
 mkdir -p "$STATE_DIR" "$XRAY_CONFIG_DIR" "$CONFIG_DIR/clients"
 
 # Minimal common/runtime shims for the isolated seller-engine test.
@@ -23,7 +20,7 @@ validate_positive_int() { [[ "$1" =~ ^[1-9][0-9]*$ ]] || die "bad integer"; }
 ok() { :; }
 info() { :; }
 
-# shellcheck source=../lib/986/seller.sh
+# shellcheck disable=SC1091
 source "$ROOT/lib/986/seller.sh"
 
 seller_load_reality_server() {
