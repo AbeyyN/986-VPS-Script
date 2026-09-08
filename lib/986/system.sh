@@ -2,7 +2,8 @@
 
 system_summary() {
   local os_name kernel arch cpu ram disk uptime_h default_if public_ip
-  os_name="$(. /etc/os-release && printf '%s %s' "${PRETTY_NAME:-$ID}" "${VERSION_ID:-}")"
+  os_name="$(awk -F= '$1=="PRETTY_NAME" {gsub(/^"|"$/, "", $2); print $2; exit}' /etc/os-release 2>/dev/null)"
+  [[ -n "$os_name" ]] || os_name='Unknown Linux'
   kernel="$(uname -r)"
   arch="$(uname -m)"
   cpu="$(nproc 2>/dev/null || printf '?')"
