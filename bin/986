@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 INSTALL_ROOT="/usr/local/lib/986-vps"
 
-for module in common registry xray seller subscription system wireguard users licensing; do
+for module in common registry xray hysteria seller seller_multi subscription system wireguard users licensing; do
   file="$INSTALL_ROOT/$module.sh"
   [[ -r "$file" ]] || { printf '986 VPS Engine: missing runtime module: %s\n' "$file" >&2; exit 1; }
   # shellcheck disable=SC1090
@@ -28,7 +28,15 @@ Xray (primary engine):
   986 xray status
   986 xray doctor
   986 xray restart
-  986 xray client [NAME]      Print generated bootstrap VLESS REALITY URI
+  986 xray client [NAME]
+
+Hysteria2 (secondary modern engine):
+  986 hysteria install [stable]
+  986 hysteria bootstrap --domain HOST --cert FILE --key FILE [--port N] [--name NAME]
+  986 hysteria status
+  986 hysteria doctor
+  986 hysteria restart
+  986 hysteria client [NAME]
 
 Unified seller users:
   986 user add NAME [--days N] [--protocol vless-reality]
@@ -38,21 +46,23 @@ Unified seller users:
   986 user resume NAME
   986 user renew NAME [DAYS]
   986 user delete NAME
-  986 user expire             Enforce all due expiries now
-  986 user timer install      Install/enable automatic expiry timer
-  986 user timer status       Show expiry timer state
+  986 user expire
+  986 user protocol add NAME hysteria2
+  986 user protocol remove NAME hysteria2
+  986 user protocol list NAME
+  986 user timer install
+  986 user timer status
 
 Client compatibility:
-  986 subscription uri [NAME]
-  986 subscription mihomo [NAME]  Generate Mihomo/OpenClash YAML
-  986 subscription status [NAME]
+  986 subscription uri NAME
+  986 subscription hysteria2 NAME
+  986 subscription mihomo NAME
+  986 subscription status NAME
 
 WireGuard (optional conventional VPN):
   986 wireguard install
   986 wireguard status
   986 wireguard restart
-
-Legacy WireGuard user lifecycle:
   986 wireguard user add NAME [--days N]
   986 wireguard user list
   986 wireguard user suspend NAME
@@ -74,17 +84,26 @@ seller_operation_lock() {
 
 interactive_reality_bootstrap() {
   local server_name target port name
-  printf '\nREALITY target selection is operator-controlled.\n'
-  printf 'Use a TLS hostname/target you have evaluated for your deployment.\n\n'
+  printf '\nREALITY target selection is operator-controlled.\n\n'
   read -r -p 'Server name (SNI): ' server_name
   read -r -p 'Target (host:port): ' target
   read -r -p 'Listen port [443]: ' port
   read -r -p 'Bootstrap client name [bootstrap]: ' name
   xray_bootstrap_reality reality \
-    --server-name "$server_name" \
-    --target "$target" \
-    --port "${port:-443}" \
-    --name "${name:-bootstrap}"
+    --server-name "$server_name" --target "$target" \
+    --port "${port:-443}" --name "${name:-bootstrap}"
+}
+
+interactive_hysteria_bootstrap() {
+  local domain cert key port name
+  printf '\nHysteria2 requires a TLS certificate covering the chosen domain.\n\n'
+  read -r -p 'Domain: ' domain
+  read -r -p 'Certificate path: ' cert
+  read -r -p 'Private key path: ' key
+  read -r -p 'UDP listen port [8443]: ' port
+  read -r -p 'Bootstrap client name [bootstrap-hy2]: ' name
+  hysteria_bootstrap --domain "$domain" --cert "$cert" --key "$key" \
+    --port "${port:-8443}" --name "${name:-bootstrap-hy2}"
 }
 
 interactive_seller_add() {
@@ -95,9 +114,16 @@ interactive_seller_add() {
   seller_add "$name" --days "${days:-30}" --protocol vless-reality
 }
 
+interactive_hysteria_assign() {
+  local name
+  read -r -p 'Existing seller username: ' name
+  seller_operation_lock
+  seller_protocol_add "$name" hysteria2
+}
+
 interactive_subscription_mihomo() {
   local name
-  read -r -p 'Seller username (blank = bootstrap): ' name
+  read -r -p 'Seller username: ' name
   subscription_mihomo "$name"
 }
 
@@ -113,17 +139,19 @@ interactive_menu() {
     printf '  3) Diagnostics\n'
     printf '  4) Install / upgrade Xray stable\n'
     printf '  5) Bootstrap VLESS REALITY + XTLS Vision\n'
-    printf '  6) Add seller user\n'
-    printf '  7) List seller users\n'
-    printf '  8) Generate Mihomo / OpenClash YAML\n'
-    printf '  9) Xray status\n'
-    printf ' 10) Xray diagnostics\n'
-    printf ' 11) Service / port registry\n'
-    printf ' 12) Seller expiry timer status\n'
-    printf ' 13) Install WireGuard (optional)\n'
-    printf ' 14) WireGuard status\n'
-    printf ' 15) List legacy WireGuard users\n'
-    printf ' 16) License status\n'
+    printf '  6) Install / upgrade Hysteria2 stable\n'
+    printf '  7) Bootstrap Hysteria2\n'
+    printf '  8) Add seller user\n'
+    printf '  9) Assign Hysteria2 to seller user\n'
+    printf ' 10) List seller users\n'
+    printf ' 11) Generate Mihomo / OpenClash YAML\n'
+    printf ' 12) Xray status\n'
+    printf ' 13) Hysteria2 status\n'
+    printf ' 14) Service / port registry\n'
+    printf ' 15) Seller expiry timer status\n'
+    printf ' 16) Install WireGuard (optional)\n'
+    printf ' 17) WireGuard status\n'
+    printf ' 18) License status\n'
     printf '  0) Exit\n\n'
     read -r -p 'Select: ' choice
     case "$choice" in
@@ -132,17 +160,19 @@ interactive_menu() {
       3) doctor || true ;;
       4) xray_install "$(config_value xray_channel stable)" ;;
       5) interactive_reality_bootstrap ;;
-      6) interactive_seller_add ;;
-      7) seller_list ;;
-      8) interactive_subscription_mihomo ;;
-      9) xray_status ;;
-      10) xray_doctor || true ;;
-      11) registry_list ;;
-      12) seller_timer_status ;;
-      13) wireguard_install ;;
-      14) wireguard_status || true ;;
-      15) user_list ;;
-      16) license_status ;;
+      6) hysteria_install stable ;;
+      7) interactive_hysteria_bootstrap ;;
+      8) interactive_seller_add ;;
+      9) interactive_hysteria_assign ;;
+      10) seller_list ;;
+      11) interactive_subscription_mihomo ;;
+      12) xray_status ;;
+      13) hysteria_status ;;
+      14) registry_list ;;
+      15) seller_timer_status ;;
+      16) wireguard_install ;;
+      17) wireguard_status || true ;;
+      18) license_status ;;
       0) exit 0 ;;
       *) warn 'Invalid selection' ;;
     esac
@@ -154,6 +184,7 @@ interactive_menu() {
 ensure_state
 registry_ensure_state
 seller_ensure_state
+hysteria_users_ensure
 load_config
 
 case "${1:-}" in
@@ -166,13 +197,9 @@ case "${1:-}" in
   version|--version|-v) printf '%s %s\n' "$PRODUCT_NAME" "$PRODUCT_VERSION" ;;
   help|--help|-h) usage ;;
   xray)
-    action="${2:-}"
-    case "$action" in
+    case "${2:-}" in
       install) xray_install "${3:-${XRAY_CHANNEL:-stable}}" ;;
-      bootstrap)
-        shift 2
-        xray_bootstrap_reality "$@"
-        ;;
+      bootstrap) shift 2; xray_bootstrap_reality "$@" ;;
       status) xray_status ;;
       doctor) xray_doctor ;;
       restart) xray_restart ;;
@@ -180,20 +207,39 @@ case "${1:-}" in
       *) usage; exit 2 ;;
     esac
     ;;
+  hysteria|hysteria2)
+    case "${2:-}" in
+      install) hysteria_install "${3:-stable}" ;;
+      bootstrap) shift 2; hysteria_bootstrap "$@" ;;
+      status) hysteria_status ;;
+      doctor) hysteria_doctor ;;
+      restart) hysteria_restart ;;
+      client) hysteria_show_client "${3:-}" ;;
+      *) usage; exit 2 ;;
+    esac
+    ;;
   user)
     action="${2:-}"
     case "$action" in
-      add|suspend|resume|renew|delete|expire) seller_operation_lock ;;
+      add|suspend|resume|renew|delete|expire|protocol) seller_operation_lock ;;
     esac
     case "$action" in
       add) shift 2; seller_add "$@" ;;
       list) seller_list ;;
       show) seller_show "${3:-}" ;;
-      suspend) seller_suspend "${3:-}" ;;
-      resume) seller_resume "${3:-}" ;;
+      suspend) seller_multi_suspend "${3:-}" ;;
+      resume) seller_multi_resume "${3:-}" ;;
       renew) seller_renew "${3:-}" "${4:-30}" ;;
-      delete) seller_delete "${3:-}" ;;
-      expire) seller_expire ;;
+      delete) seller_multi_delete "${3:-}" ;;
+      expire) seller_multi_expire ;;
+      protocol)
+        case "${3:-}" in
+          add) seller_protocol_add "${4:-}" "${5:-}" ;;
+          remove) seller_protocol_remove "${4:-}" "${5:-}" ;;
+          list) seller_multi_protocol_status "${4:-}" ;;
+          *) usage; exit 2 ;;
+        esac
+        ;;
       timer)
         case "${3:-}" in
           install) seller_install_expiry_timer ;;
@@ -207,6 +253,7 @@ case "${1:-}" in
   subscription)
     case "${2:-}" in
       uri) subscription_uri "${3:-}" ;;
+      hysteria|hysteria2) subscription_hysteria2 "${3:-}" ;;
       mihomo|openclash) subscription_mihomo "${3:-}" ;;
       status) subscription_status "${3:-}" ;;
       *) usage; exit 2 ;;
