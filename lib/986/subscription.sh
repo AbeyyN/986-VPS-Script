@@ -68,7 +68,6 @@ subscription_write_uri() {
   umask 077
   printf '%s\n' "$uri" > "$output"
   chmod 0600 "$output"
-  printf '%s\n' "$output"
 }
 
 subscription_write_mihomo() {
@@ -115,19 +114,19 @@ rules:
   - MATCH,986-PROXY
 EOF_YAML
   chmod 0600 "$output"
-  printf '%s\n' "$output"
 }
 
 subscription_write_exports() {
   local requested_name="${1:-}"
-  subscription_write_uri "$requested_name" >/dev/null
-  subscription_write_mihomo "$requested_name" >/dev/null
+  subscription_write_uri "$requested_name"
+  subscription_write_mihomo "$requested_name"
 }
 
 subscription_uri() {
   local requested_name="${1:-}" output
   require_root
-  output="$(subscription_write_uri "$requested_name")"
+  subscription_write_uri "$requested_name"
+  output="$CONFIG_DIR/clients/$SUB_CLIENT_NAME-vless-reality.txt"
   printf 'User   : %s\n' "$SUB_CLIENT_NAME"
   printf 'Status : %s\n' "$SUB_CLIENT_STATUS"
   printf 'Expires: %s\n' "$SUB_CLIENT_EXPIRES"
@@ -138,7 +137,8 @@ subscription_uri() {
 subscription_mihomo() {
   local requested_name="${1:-}" output
   require_root
-  output="$(subscription_write_mihomo "$requested_name")"
+  subscription_write_mihomo "$requested_name"
+  output="$CONFIG_DIR/clients/$SUB_CLIENT_NAME-mihomo.yaml"
   ok "Mihomo/OpenClash configuration generated for $SUB_CLIENT_NAME"
   printf 'Status : %s\n' "$SUB_CLIENT_STATUS"
   printf 'Expires: %s\n' "$SUB_CLIENT_EXPIRES"
