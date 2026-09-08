@@ -2,7 +2,7 @@
 
 A stability-first, Xray-first VPS management platform for VPN/proxy sellers and server operators.
 
-> **Current milestone: `0.2.0-alpha.1` / Early Access.** The current code has a verified Xray runtime path, VLESS REALITY + XTLS Vision bootstrap, rollback safeguards and an initial local Mihomo/OpenClash export. Real-VPS integration testing is still required before any production-ready claim.
+> **Current milestone: `0.3.0-alpha.1` / Early Access.** The current code includes a verified Xray runtime, VLESS REALITY + XTLS Vision, multiple managed seller users, expiry/suspend/resume/renew lifecycle, per-user Mihomo/OpenClash export, rollback safeguards and automatic expiry enforcement. Real-VPS integration testing is still required before any production-ready claim.
 
 ## Principles
 
@@ -15,7 +15,7 @@ A stability-first, Xray-first VPS management platform for VPN/proxy sellers and 
 
 986 is intentionally modular. A failure in one optional protocol module must not corrupt or stop unrelated services.
 
-## What works in `0.2.0-alpha.1`
+## What works in `0.3.0-alpha.1`
 
 ### Xray primary engine
 
@@ -30,24 +30,90 @@ A stability-first, Xray-first VPS management platform for VPN/proxy sellers and 
 - transactional config apply + rollback;
 - previous Xray binary rollback path after failed upgrade health checks;
 - VLESS REALITY + `xtls-rprx-vision` bootstrap;
-- generated root-only VLESS client URI;
 - Xray status and diagnostics.
 
-### Initial OpenClash / Mihomo compatibility
+### Unified seller users
 
-After bootstrapping REALITY, 986 can generate a local Mihomo/OpenClash YAML:
+Seller users now have one persistent identity with:
+
+- username;
+- status (`active`, `suspended`, `expired`);
+- expiry date;
+- assigned protocol list;
+- persistent Xray UUID;
+- per-user VLESS URI;
+- per-user Mihomo/OpenClash YAML.
+
+Create a customer:
 
 ```bash
-sudo 986 subscription mihomo
+sudo 986 user add alice --days 30 --protocol vless-reality
 ```
 
-The file is stored under `/etc/986-vps/clients/` with root-only permissions.
+Lifecycle:
 
-A hosted subscription URL is **not yet enabled** because the future 986 control plane/domain is intentionally a later milestone.
+```bash
+sudo 986 user list
+sudo 986 user show alice
+sudo 986 user suspend alice
+sudo 986 user resume alice
+sudo 986 user renew alice 30
+sudo 986 user delete alice
+```
+
+Suspend/expire removes only that customer's managed Xray identity. Resume restores the same UUID so the client credential remains stable.
+
+### Automatic expiry
+
+The installer enables:
+
+```text
+986-user-expiry.timer
+```
+
+The timer checks periodically and only changes Xray when active accounts have actually expired.
+
+Manual enforcement:
+
+```bash
+sudo 986 user expire
+```
+
+Expiry is batch-applied in one Xray configuration transaction, so several expiring customers do not cause repeated sequential restarts.
+
+### Mihomo / OpenClash compatibility
+
+Generate a customer-specific config:
+
+```bash
+sudo 986 subscription mihomo alice
+```
+
+Other exports:
+
+```bash
+sudo 986 subscription uri alice
+sudo 986 subscription status alice
+```
+
+Files are stored root-only under:
+
+```text
+/etc/986-vps/clients/
+```
+
+A hosted subscription URL is **not yet enabled** because the future 986 control plane/domain remains a later milestone.
 
 ### Optional conventional VPN
 
-WireGuard remains available as an optional module, including its original local Early Access user lifecycle. It is no longer the product's primary direction.
+WireGuard remains available as an optional module. Its older local user lifecycle is preserved under:
+
+```bash
+sudo 986 wireguard user add legacy-wg --days 30
+sudo 986 wireguard user list
+```
+
+`986 user ...` is now reserved for the unified seller identity model.
 
 ## Planned protocol stack
 
@@ -77,12 +143,6 @@ WireGuard remains available as an optional module, including its original local 
 
 OpenClash is treated as a **client/subscription target**, not a server-side protocol.
 
-## Target seller model
-
-The destination architecture is **one customer identity, multiple assigned protocols** with one expiry/quota/suspend policy and protocol-specific credentials.
-
-That unified seller lifecycle is not yet complete in this alpha; the current Xray bootstrap client remains an initial standalone profile.
-
 ## Platform target
 
 - Debian 13 amd64;
@@ -109,7 +169,7 @@ Launch:
 sudo 986
 ```
 
-## Xray quick start
+## Xray + seller quick start
 
 Install the 986-tested stable runtime:
 
@@ -129,15 +189,28 @@ sudo 986 xray bootstrap reality \
 
 `--server-name` and `--target` are deliberately required. 986 does not silently choose a third-party REALITY target for the operator.
 
-Inspect/export:
+Create seller users:
 
 ```bash
-sudo 986 xray status
+sudo 986 user add alice --days 30 --protocol vless-reality
+sudo 986 user add bob --days 7 --protocol vless-reality
+sudo 986 user list
+```
+
+Generate client exports:
+
+```bash
+sudo 986 subscription uri alice
+sudo 986 subscription mihomo alice
+```
+
+Inspect platform state:
+
+```bash
+sudo 986 status
+sudo 986 doctor
 sudo 986 xray doctor
-sudo 986 xray client bootstrap
-sudo 986 subscription uri bootstrap
-sudo 986 subscription mihomo bootstrap
-sudo 986 subscription status
+sudo 986 user timer status
 sudo 986 registry
 ```
 
@@ -158,14 +231,26 @@ sudo 986 registry
 986 xray restart
 986 xray client [NAME]
 
+986 user add NAME [--days N] [--protocol vless-reality]
+986 user list
+986 user show NAME
+986 user suspend NAME
+986 user resume NAME
+986 user renew NAME [DAYS]
+986 user delete NAME
+986 user expire
+986 user timer install
+986 user timer status
+
 986 subscription uri [NAME]
 986 subscription mihomo [NAME]
 986 subscription openclash [NAME]
-986 subscription status
+986 subscription status [NAME]
 
 986 wireguard install
 986 wireguard status
 986 wireguard restart
+986 wireguard user ...
 ```
 
 ## Future protocol templates
@@ -177,7 +262,7 @@ templates/xray/trojan-tls.json.example
 templates/xray/vmess-ws-tls.json.example
 ```
 
-This distinction is intentional: a template is not marked complete until installation, validation, health, rollback and real-VPS testing exist around it.
+A template is not marked complete until installation, validation, health, rollback and real-VPS testing exist around it.
 
 ## Runtime separation / safe uninstall
 
@@ -190,6 +275,8 @@ This distinction is intentional: a template is not marked complete until install
 ```
 
 A normal 986 uninstall does not stop/delete existing protocol services. `--purge` also preserves the live Xray configuration and `/etc/wireguard`; management cleanup must not become a surprise customer outage.
+
+The seller expiry timer is removed with the management CLI because it depends on `/usr/local/bin/986`.
 
 ## Engineering standard
 
@@ -220,18 +307,19 @@ FAIL -> rollback
 
 Third-party networking components must come from official upstream sources. Opaque executables/archives copied from unrelated script repositories are prohibited by project policy and CI.
 
-## CI gates
+## Current limits
 
-GitHub Actions currently checks:
+`0.3.0-alpha.1` does **not** yet claim:
 
-- Bash syntax;
-- ShellCheck;
-- Xray JSON example validity;
-- pinned Xray version/digest presence;
-- required security/privacy docs;
-- obvious private-key/password leakage patterns;
-- accidental checked-in ELF binaries;
-- accidental checked-in ZIP/tar binary payloads.
+- quota/bandwidth accounting;
+- device/concurrency limits;
+- multiple simultaneous protocols on one seller identity;
+- bulk reseller operations;
+- Trojan/VMess/Shadowsocks seller lifecycle;
+- Hysteria2/TUIC engine integration;
+- hosted/tokenized subscriptions;
+- remote seller dashboard/control-plane synchronization;
+- production readiness.
 
 ## Privacy and future control plane
 
@@ -256,8 +344,6 @@ Cloudflare edge / tunnel
    +-- self-hosted Supabase/PostgreSQL on 986-server
 ```
 
-The planned authoritative data store remains self-hosted. A dedicated public IP is not required when an outbound tunnel is used.
-
 Future telemetry will be explicit and must not collect VPN traffic contents, browsing history, customer passwords, VPN private keys, SSH private keys or `/etc/shadow`.
 
 ## Licensing
@@ -268,6 +354,7 @@ Early Access is currently free. Future commercial licensing is planned around si
 
 ## Documentation
 
+- [Seller engine](docs/SELLER-ENGINE.md)
 - [Xray engine](docs/XRAY.md)
 - [Mihomo / OpenClash compatibility](docs/OPENCLASH.md)
 - [Architecture](docs/ARCHITECTURE.md)
