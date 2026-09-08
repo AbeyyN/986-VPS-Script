@@ -49,13 +49,15 @@ Priority: **P0**
 
 Priority: **P0/P1**
 
-- [ ] Unified subscription engine
+- [ ] Unified subscription engine across multiple customers/protocols
 - [x] Initial VLESS URI generation for the bootstrap REALITY client
+- [x] Initial local Mihomo/OpenClash YAML export for the bootstrap REALITY client
+- [ ] Hosted tokenized HTTPS subscription endpoint
 - [ ] Unified per-customer VLESS URI generation
 - [ ] VMess URI generation where enabled
 - [ ] Trojan URI generation
 - [ ] Shadowsocks URI generation
-- [ ] Mihomo/OpenClash YAML output
+- [ ] Multi-node Mihomo/OpenClash YAML output
 - [ ] sing-box JSON output
 - [ ] Generic subscription output
 - [ ] QR output where applicable
@@ -171,7 +173,7 @@ Install/update operations should use locking, permission checks, upstream proven
 
 Live protocol runtimes must also remain separated from removable CLI/orchestration files so uninstalling a management layer cannot unexpectedly break existing customer services.
 
-See `docs/REFERENCE-AUDIT-LACASITA.md` and `docs/XRAY.md`.
+See `docs/REFERENCE-AUDIT-LACASITA.md`, `docs/XRAY.md` and `docs/OPENCLASH.md`.
 
 ## Release principle
 
