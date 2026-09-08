@@ -10,6 +10,7 @@ BACKUP_DIR="/var/backups/986-vps"
 USERS_DB="$STATE_DIR/users.tsv"
 WG_DIR="/etc/wireguard"
 WG_CONF="$WG_DIR/wg0.conf"
+export PRODUCT_NAME PRODUCT_VERSION INSTALL_ROOT CONFIG_DIR CONFIG_FILE STATE_DIR BACKUP_DIR USERS_DB WG_DIR WG_CONF
 
 c_red='\033[0;31m'
 c_green='\033[0;32m'
@@ -41,6 +42,7 @@ load_config() {
     # shellcheck disable=SC1090
     source "$CONFIG_FILE"
   fi
+  export PUBLIC_ENDPOINT WG_PORT WG_SUBNET WG_SERVER_ADDRESS WG_DNS CONTROL_PLANE_URL TELEMETRY_ENABLED LICENSE_MODE
 }
 
 ensure_state() {
