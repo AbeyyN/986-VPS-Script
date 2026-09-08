@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 PRODUCT_NAME="986 VPS Engine"
-PRODUCT_VERSION="0.1.0-alpha.1"
+PRODUCT_VERSION="0.2.0-alpha.1"
 INSTALL_ROOT="/usr/local/lib/986-vps"
 CONFIG_DIR="/etc/986-vps"
 CONFIG_FILE="$CONFIG_DIR/986.conf"
@@ -30,6 +30,7 @@ require_root() {
 
 load_config() {
   PUBLIC_ENDPOINT=""
+  XRAY_CHANNEL="stable"
   WG_PORT="51820"
   WG_SUBNET="10.86.0.0/24"
   WG_SERVER_ADDRESS="10.86.0.1/24"
@@ -42,7 +43,7 @@ load_config() {
     # shellcheck disable=SC1090
     source "$CONFIG_FILE"
   fi
-  export PUBLIC_ENDPOINT WG_PORT WG_SUBNET WG_SERVER_ADDRESS WG_DNS CONTROL_PLANE_URL TELEMETRY_ENABLED LICENSE_MODE
+  export PUBLIC_ENDPOINT XRAY_CHANNEL WG_PORT WG_SUBNET WG_SERVER_ADDRESS WG_DNS CONTROL_PLANE_URL TELEMETRY_ENABLED LICENSE_MODE
 }
 
 ensure_state() {
@@ -82,6 +83,7 @@ config_value() {
   load_config
   case "$key" in
     public_endpoint) printf '%s\n' "${PUBLIC_ENDPOINT:-$fallback}" ;;
+    xray_channel) printf '%s\n' "${XRAY_CHANNEL:-$fallback}" ;;
     wg_port) printf '%s\n' "${WG_PORT:-$fallback}" ;;
     wg_dns) printf '%s\n' "${WG_DNS:-$fallback}" ;;
     *) printf '%s\n' "$fallback" ;;
