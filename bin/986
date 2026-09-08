@@ -73,7 +73,15 @@ interactive_menu() {
       8) read -r -p 'Username: ' u; user_suspend "$u" ;;
       9) read -r -p 'Username: ' u; user_resume "$u" ;;
       10) read -r -p 'Username: ' u; read -r -p 'Days [30]: ' d; user_renew "$u" "${d:-30}" ;;
-      11) read -r -p 'Username: ' u; read -r -p "Delete $u? Type YES: " confirm; [[ "$confirm" == 'YES' ]] && user_delete "$u" || warn 'Cancelled' ;;
+      11)
+        read -r -p 'Username: ' u
+        read -r -p "Delete $u? Type YES: " confirm
+        if [[ "$confirm" == 'YES' ]]; then
+          user_delete "$u"
+        else
+          warn 'Cancelled'
+        fi
+        ;;
       12) license_status ;;
       0) exit 0 ;;
       *) warn 'Invalid selection' ;;
