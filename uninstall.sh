@@ -9,6 +9,9 @@ BACKUP_DIR="/var/backups/986-vps"
 XRAY_RUNTIME_DIR="/opt/986-vps/xray"
 XRAY_CONFIG_DIR="$CONFIG_DIR/xray"
 XRAY_UNIT="/etc/systemd/system/986-xray.service"
+HYSTERIA_RUNTIME_DIR="/opt/986-vps/hysteria"
+HYSTERIA_CONFIG_DIR="$CONFIG_DIR/hysteria"
+HYSTERIA_UNIT="/etc/systemd/system/986-hysteria.service"
 EXPIRY_SERVICE="/etc/systemd/system/986-user-expiry.service"
 EXPIRY_TIMER="/etc/systemd/system/986-user-expiry.timer"
 PURGE="false"
@@ -19,8 +22,6 @@ fi
 
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
 
-# The expiry timer calls the 986 CLI. Disable it before removing the CLI so
-# uninstall never leaves a permanently failing systemd timer behind.
 systemctl disable --now 986-user-expiry.timer >/dev/null 2>&1 || true
 rm -f "$EXPIRY_SERVICE" "$EXPIRY_TIMER"
 systemctl daemon-reload >/dev/null 2>&1 || true
@@ -31,31 +32,24 @@ rm -rf "$INSTALL_ROOT"
 
 if [[ "$PURGE" == "true" ]]; then
   printf '[986] Purge requested: removing non-runtime 986 application state where safe.\n'
-
-  # Preserve Xray's live config because the managed systemd service may still
-  # depend on it after the 986 CLI is removed. Removing it would violate the
-  # project's no-surprise-outage rule.
   if [[ -d "$CONFIG_DIR" ]]; then
     find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 \
       ! -name xray \
+      ! -name hysteria \
       -exec rm -rf -- {} +
   fi
-
   rm -rf "$STATE_DIR"
   printf '[986] WireGuard configuration in /etc/wireguard is intentionally preserved.\n'
-  if [[ -d "$XRAY_CONFIG_DIR" ]]; then
-    printf '[986] Xray live configuration preserved in %s.\n' "$XRAY_CONFIG_DIR"
-  fi
+  [[ -d "$XRAY_CONFIG_DIR" ]] && printf '[986] Xray live configuration preserved in %s.\n' "$XRAY_CONFIG_DIR"
+  [[ -d "$HYSTERIA_CONFIG_DIR" ]] && printf '[986] Hysteria2 live configuration/TLS material preserved in %s.\n' "$HYSTERIA_CONFIG_DIR"
 else
   printf '[986] Preserving %s and %s.\n' "$CONFIG_DIR" "$STATE_DIR"
 fi
 
-if [[ -d "$XRAY_RUNTIME_DIR" ]]; then
-  printf '[986] Xray protocol runtime preserved in %s.\n' "$XRAY_RUNTIME_DIR"
-fi
-if [[ -f "$XRAY_UNIT" ]]; then
-  printf '[986] Xray systemd service definition preserved: %s.\n' "$XRAY_UNIT"
-fi
+[[ -d "$XRAY_RUNTIME_DIR" ]] && printf '[986] Xray protocol runtime preserved in %s.\n' "$XRAY_RUNTIME_DIR"
+[[ -f "$XRAY_UNIT" ]] && printf '[986] Xray systemd service preserved: %s.\n' "$XRAY_UNIT"
+[[ -d "$HYSTERIA_RUNTIME_DIR" ]] && printf '[986] Hysteria2 protocol runtime preserved in %s.\n' "$HYSTERIA_RUNTIME_DIR"
+[[ -f "$HYSTERIA_UNIT" ]] && printf '[986] Hysteria2 systemd service preserved: %s.\n' "$HYSTERIA_UNIT"
 
 printf '[986] Seller expiry automation removed with the management CLI.\n'
 printf '[986] Backups remain in %s.\n' "$BACKUP_DIR"
