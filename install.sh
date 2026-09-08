@@ -59,6 +59,7 @@ fetch "bin/986" "$INSTALL_ROOT/986" 0755
 fetch "lib/986/common.sh" "$INSTALL_ROOT/common.sh"
 fetch "lib/986/registry.sh" "$INSTALL_ROOT/registry.sh"
 fetch "lib/986/xray.sh" "$INSTALL_ROOT/xray.sh"
+fetch "lib/986/subscription.sh" "$INSTALL_ROOT/subscription.sh"
 fetch "lib/986/system.sh" "$INSTALL_ROOT/system.sh"
 fetch "lib/986/wireguard.sh" "$INSTALL_ROOT/wireguard.sh"
 fetch "lib/986/users.sh" "$INSTALL_ROOT/users.sh"
@@ -94,5 +95,6 @@ printf '\nRecommended next commands:\n'
 printf '  sudo 986\n'
 printf '  sudo 986 xray install\n'
 printf '  sudo 986 xray bootstrap reality --server-name HOST --target HOST:443\n'
+printf '  sudo 986 subscription mihomo\n'
 printf '\nOptional conventional VPN module:\n'
 printf '  sudo 986 wireguard install\n'
