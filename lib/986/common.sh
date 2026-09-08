@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 PRODUCT_NAME="986 VPS Engine"
-PRODUCT_VERSION="0.3.0-alpha.1"
+PRODUCT_VERSION="0.4.0-alpha.1"
 INSTALL_ROOT="/usr/local/lib/986-vps"
 CONFIG_DIR="/etc/986-vps"
 CONFIG_FILE="$CONFIG_DIR/986.conf"
