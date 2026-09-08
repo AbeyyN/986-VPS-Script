@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose a stability-safe improvement for 986 VPS Engine
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the seller/operator problem, not only the requested implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain what should happen from the operator's point of view.
+    validations:
+      required: true
+  - type: textarea
+    id: stability
+    attributes:
+      label: Stability and rollback considerations
+      description: What could fail, and how should the system recover without disrupting unrelated VPN services?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional alternatives or upstream tools that were considered.
