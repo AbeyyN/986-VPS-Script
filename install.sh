@@ -59,6 +59,7 @@ fetch "bin/986" "$INSTALL_ROOT/986" 0755
 fetch "lib/986/common.sh" "$INSTALL_ROOT/common.sh"
 fetch "lib/986/registry.sh" "$INSTALL_ROOT/registry.sh"
 fetch "lib/986/xray.sh" "$INSTALL_ROOT/xray.sh"
+fetch "lib/986/seller.sh" "$INSTALL_ROOT/seller.sh"
 fetch "lib/986/subscription.sh" "$INSTALL_ROOT/subscription.sh"
 fetch "lib/986/system.sh" "$INSTALL_ROOT/system.sh"
 fetch "lib/986/wireguard.sh" "$INSTALL_ROOT/wireguard.sh"
@@ -84,6 +85,18 @@ if [[ ! -f "$STATE_DIR/users.tsv" ]]; then
   chmod 0600 "$STATE_DIR/users.tsv"
 fi
 
+if [[ ! -f "$STATE_DIR/sellers.tsv" ]]; then
+  printf 'username\tstatus\texpires_at\tprotocols\txray_uuid\tcreated_at\tupdated_at\n' > "$STATE_DIR/sellers.tsv"
+  chmod 0600 "$STATE_DIR/sellers.tsv"
+fi
+
+log "Installing seller expiry enforcement timer..."
+if "$BIN_LINK" user timer install; then
+  log "Seller expiry timer enabled."
+else
+  log "Seller expiry timer setup returned a warning. Run: sudo 986 user timer install"
+fi
+
 log "Running post-install diagnostics..."
 if "$BIN_LINK" doctor; then
   log "986 VPS Engine installation complete."
@@ -95,6 +108,8 @@ printf '\nRecommended next commands:\n'
 printf '  sudo 986\n'
 printf '  sudo 986 xray install\n'
 printf '  sudo 986 xray bootstrap reality --server-name HOST --target HOST:443\n'
-printf '  sudo 986 subscription mihomo\n'
+printf '  sudo 986 user add alice --days 30 --protocol vless-reality\n'
+printf '  sudo 986 subscription mihomo alice\n'
 printf '\nOptional conventional VPN module:\n'
 printf '  sudo 986 wireguard install\n'
+printf '  sudo 986 wireguard user add legacy-wg --days 30\n'
